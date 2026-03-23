@@ -7,56 +7,56 @@ metadata:
 
 # Kotlin Client UseCase Generator (Android / KMP client)
 
-Генерирует use case только для клиентских Kotlin-приложений:
+Generate use cases only for client-side Kotlin applications:
 - Android
 - Kotlin Multiplatform (client side)
 
-Никогда не генерирует backend/server код.
+Never generate backend/server code.
 
 ---
 
-## 1) Назначение
+## 1) Purpose
 
-Скил генерирует:
+This skill generates:
 - UseCase interface
 - UseCaseImpl implementation
-- зависимости конструктора (только необходимые)
-- orchestration бизнес-логику
-- execute метод
-- private helper methods (при необходимости)
-- KDoc (на русском языке)
+- constructor dependencies (only required ones)
+- orchestration business logic
+- execute method
+- private helper methods (when needed)
+- KDoc (in Russian)
 
 ---
 
 ## 2) Scope
 
-### Генерируемые сущности
+### Generated entities
 - UseCase interface
 - UseCaseImpl implementation
 - execute method
 - private helper methods
-- KDoc документацию
+- KDoc documentation
 
-### Не генерируется
+### Never generated
 - repository
 - datasource
 - mapper
-- DI конфигурация
+- DI configuration
 - module wiring
 - Flow-based use case
-- архитектурное размещение
-- дополнительные abstraction layers
+- architectural placement
+- extra abstraction layers
 
 ---
 
 ## 3) Naming Rules
 
 ### UseCase naming
-Использовать:
+Use:
 - FeatureActionUseCase
 - FeatureActionUseCaseImpl
 
-Примеры:
+Examples:
 - AuthOtpVerifyUseCase
 - AuthOtpVerifyUseCaseImpl
 - UserProfileLoadUseCase
@@ -64,9 +64,9 @@ metadata:
 
 ### Dependency naming
 - lowerCamelCase
-- имя переменной от типа
+- variable name based on dependency type
 
-Примеры:
+Examples:
 - dispatcherProvider
 - authRepository
 - authTokenSaver
@@ -74,7 +74,7 @@ metadata:
 - sessionManager
 - analyticsTracker
 
-Запрещенные generic-имена:
+Forbidden generic names:
 - repository
 - manager
 - data
@@ -82,34 +82,34 @@ metadata:
 - helper
 - util
 
-Пример:
-- тип AuthRepository -> имя authRepository
+Example:
+- type AuthRepository -> variable authRepository
 
 ---
 
 ## 4) Contract Rules
 
 ### Interface contract
-- Ровно один публичный метод.
-- Имя метода только execute.
-- Сигнатура только suspend fun execute(...).
-- Дополнительный публичный API запрещен.
+- Exactly one public method.
+- Method name must be execute.
+- Signature must be suspend fun execute(...).
+- Additional public API is forbidden.
 
 ### execute method
-- Всегда suspend.
-- Возвращаемый тип: любой по контракту задачи (Unit, model, primitive, nullable, sealed result и т.д.).
-- operator fun invoke запрещен.
-- Разрешен только execute.
+- Always suspend.
+- Return type can be any task-defined contract type (Unit, model, primitive, nullable, sealed result, etc.).
+- operator fun invoke is forbidden.
+- Only execute is allowed.
 
 ---
 
 ## 5) Implementation Rules
 
 ### Visibility
-- interface — public
-- implementation — internal
+- interface: public
+- implementation: internal
 
-Пример:
+Example:
 ```kotlin
 internal class AuthOtpVerifyUseCaseImpl(
     private val dispatcherProvider: DispatcherProvider,
@@ -118,83 +118,83 @@ internal class AuthOtpVerifyUseCaseImpl(
 ```
 
 ### Public API
-Запрещено:
-- дополнительные публичные методы
-- дополнительные entry points
-- любые public/internal API кроме execute
+Forbidden:
+- additional public methods
+- additional entry points
+- any public/internal API except execute
 
-Разрешено:
+Allowed:
 - private methods
 
 ---
 
 ## 6) Dispatcher Policy (Hard Rule)
 
-Каждый use case обязан:
-- использовать DispatcherProvider
-- выполнять основную логику внутри withContext(...)
+Each use case must:
+- use DispatcherProvider
+- run main logic inside withContext(...)
 
 Dispatcher selection:
-- по умолчанию: dispatcherProvider.IO
-- dispatcherProvider.Default только для явно вычислительных задач
-- dispatcherProvider.Main запрещен
+- default: dispatcherProvider.IO
+- use dispatcherProvider.Default only for clearly CPU-bound work
+- dispatcherProvider.Main is forbidden
 
 ---
 
 ## 7) Business Logic Rules
 
-Use case — orchestration unit, не прокси.
+Use case is an orchestration unit, not a proxy.
 
-Допустимо:
-- использовать несколько repository
-- использовать зависимости разных feature
-- читать/писать данные
-- выполнять post-processing
-- сохранять локальные данные
-- агрегировать источники
-- ветвить логику (if, when, early return)
-- валидировать входные параметры
-- мультишаговые сценарии
+Allowed:
+- use multiple repositories
+- use cross-feature dependencies
+- read/write data
+- apply post-processing
+- save local data
+- aggregate data sources
+- branch logic (if, when, early return)
+- validate input
+- implement multi-step scenarios
 
-Side-effects допустимы:
-- сохранение токенов
-- обновление кэша
-- запись локальных данных
-- связка remote + local
+Allowed side effects:
+- token saving
+- cache updates
+- local writes
+- remote + local orchestration
 
 ---
 
 ## 8) Error Handling Policy
 
-По умолчанию запрещено:
-- самовольно добавлять try/catch
-- самовольно менять error contract
-- самовольно вводить Result wrapper
+By default, forbidden:
+- adding try/catch without explicit need
+- changing error contract
+- introducing Result wrappers on your own
 
-Разрешено:
-- try/catch только когда явно требуется задачей/контрактом
+Allowed:
+- try/catch only when explicitly required by task/contract
 
 ---
 
 ## 9) Private Methods Policy
 
 Private methods:
-- разрешены при смысловой пользе
-- могут быть suspend
-- могут содержать бизнес-логику
-- могут использовать named arguments
+- are allowed when they add semantic value
+- can be suspend
+- can contain business logic
+- can use named arguments
 
-Не создавать private methods:
-- ради структуры
-- ради красоты
-- без логической необходимости
+Do not create private methods:
+- for structure only
+- for aesthetics only
+- without logical need
 
 ---
 
 ## 10) Logic Composition Rules
 
 ### also usage
-Разрешено только для простой одношаговой post-processing логики:
+Allowed only for simple single-step post-processing:
 
 ```kotlin
 repository.verify(
@@ -203,7 +203,7 @@ repository.verify(
 ```
 
 ### Local variable usage
-Обязательно, если логика сложнее одного шага:
+Required when logic is more than one step:
 
 ```kotlin
 val result = repository.verify(
@@ -219,28 +219,30 @@ return result
 
 ---
 
-## 11) KDoc Policy (на русском)
+## 11) KDoc Policy
 
-Обязательно:
-- краткий KDoc у interface
-- краткий KDoc у execute в interface
-- развернутый KDoc у implementation и execute в implementation
+KDoc must be written in Russian.
 
-Implementation KDoc должен описывать:
-- что делает use case
-- как работает логика
-- почему выбран конкретный dispatcher
-- что делают private methods (если есть)
+Required:
+- short KDoc for interface
+- short KDoc for execute in interface
+- detailed KDoc for implementation and execute in implementation
+
+Implementation KDoc must explain:
+- what the use case does
+- how logic works
+- why this dispatcher is used
+- what private methods do (if present)
 
 ---
 
 ## 12) Formatting Specification (Hard Rules)
 
 ### Parameter declaration
-- если параметр 1: можно в одну строку
-- если параметров 2+: только перенос строк
+- if method has 1 parameter: single-line is allowed
+- if method has 2+ parameters: multiline only
 
-Пример:
+Example:
 ```kotlin
 suspend fun execute(
     code: String,
@@ -249,8 +251,8 @@ suspend fun execute(
 ```
 
 ### Named arguments
-Всегда использовать named arguments в вызовах:
-- даже если аргумент один
+Always use named arguments in calls:
+- even for one argument
 
 ```kotlin
 repository.loadUser(
@@ -259,13 +261,13 @@ repository.loadUser(
 ```
 
 ### Trailing comma
-Обязательна в multiline:
-- параметры
-- аргументы
-- конструкторы
+Mandatory in all multiline structures:
+- parameters
+- arguments
+- constructors
 
 ### Constructor formatting
-Если зависимостей 2+, только вертикальный список:
+If dependencies count is 2+, use vertical list only:
 
 ```kotlin
 internal class ExampleUseCaseImpl(
@@ -278,36 +280,36 @@ internal class ExampleUseCaseImpl(
 
 ## 13) Abstraction Restrictions
 
-Запрещено:
-- лишние abstraction layers
-- wrapper без необходимости
-- factory без причины
-- executor без причины
-- helper-классы без задачи
+Forbidden:
+- unnecessary abstraction layers
+- wrappers without purpose
+- factories without reason
+- executors without reason
+- helper classes without a concrete task
 
 ---
 
 ## 14) Architectural Neutrality
 
-Скил:
-- не определяет архитектуру
-- не определяет пакеты
-- не определяет слои
-- не распределяет файлы по структуре проекта
+This skill:
+- does not define architecture
+- does not define package structure
+- does not define layers
+- does not place files in project structure
 
 ---
 
 ## 15) Explicit Restrictions (Never)
 
-Скил никогда не должен:
-- использовать operator invoke
-- делать Impl публичным
-- добавлять дополнительный public API
-- добавлять Flow
-- добавлять try/catch без причины
-- изменять return contract
-- создавать лишние сущности
-- размещать файлы по пакетам/слоям по собственной инициативе
+Never:
+- use operator invoke
+- make Impl public
+- add extra public API
+- add Flow
+- add try/catch without explicit reason
+- change return contract
+- create extra entities
+- enforce package/layer placement
 
 ---
 
@@ -510,24 +512,24 @@ internal class UserProfileLoadUseCaseImpl(
 
 ## 18) Bad Examples (Do Not Generate)
 
-Неправильно:
+Wrong:
 ```kotlin
 interface XUseCase {
     suspend operator fun invoke(id: String): User
 }
 ```
 
-Неправильно:
+Wrong:
 ```kotlin
-class XUseCaseImpl(...) : XUseCase // Impl должен быть internal
+class XUseCaseImpl(...) : XUseCase // Impl must be internal
 ```
 
-Неправильно:
+Wrong:
 ```kotlin
-override suspend fun execute(id: String): Flow<User> // Flow запрещен
+override suspend fun execute(id: String): Flow<User> // Flow is forbidden
 ```
 
-Неправильно:
+Wrong:
 ```kotlin
 override suspend fun execute(id: String): User {
     return try {
@@ -537,9 +539,9 @@ override suspend fun execute(id: String): User {
     }
 }
 ```
-(если try/catch не был явно запрошен контрактом)
+(if try/catch was not explicitly required by contract)
 
-Неправильно:
+Wrong:
 ```kotlin
 override suspend fun execute(id: String): User {
     return withContext(dispatcherProvider.Main) { ... }
@@ -550,20 +552,20 @@ override suspend fun execute(id: String): User {
 
 ## 19) Validation Checklist
 
-Перед выдачей результата проверить:
-- код только для client-side Android/KMP
-- use case name соответствует FeatureActionUseCase
-- impl name соответствует FeatureActionUseCaseImpl
-- interface public, impl internal
-- ровно один public метод execute
-- execute всегда suspend
-- нет operator invoke
-- используется DispatcherProvider + withContext
-- выбран корректный dispatcher (IO default / Default CPU-only / no Main)
-- нет Flow
-- нет лишних сущностей (repo/mapper/datasource/DI)
-- нет try/catch без явной причины
-- named arguments используются всегда
-- multiline правила и trailing comma соблюдены
-- KDoc на русском: краткий у interface, развернутый у implementation
-- архитектурная нейтральность соблюдена (без навязывания пакетов/слоев)
+Before returning output, verify:
+- code is client-side Android/KMP only
+- use case name matches FeatureActionUseCase
+- impl name matches FeatureActionUseCaseImpl
+- interface is public, impl is internal
+- exactly one public method execute
+- execute is always suspend
+- no operator invoke
+- DispatcherProvider + withContext is used
+- dispatcher is correct (IO default / Default CPU-only / no Main)
+- no Flow
+- no extra entities (repo/mapper/datasource/DI)
+- no try/catch without explicit reason
+- named arguments are always used
+- multiline rules and trailing comma are respected
+- KDoc is in Russian (short in interface, detailed in implementation)
+- architectural neutrality is preserved (no forced package/layer structure)
