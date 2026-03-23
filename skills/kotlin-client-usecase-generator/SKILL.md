@@ -1,319 +1,107 @@
 ---
 name: kotlin-client-usecase-generator
-description: Generate client-side Kotlin UseCase interface and internal implementation for Android/Kotlin Multiplatform apps: enforce execute-only suspend contract, DispatcherProvider with withContext (IO by default, Default only for CPU-bound work), orchestration business logic with optional private helpers, Russian KDoc, strict naming/formatting rules, and deterministic templates/examples without repositories/mappers/DI generation.
+description: Generate client-side Kotlin UseCase interface and internal implementation when the user asks to create/refactor Android or KMP client use cases. Enforce execute-only suspend contract, DispatcherProvider with withContext (IO by default, Default only for CPU-bound work), Russian KDoc, strict naming/formatting rules, and deterministic output without repositories/mappers/DI generation.
 metadata:
-  short-description: Kotlin client use case generator
+  short-description: Kotlin client UseCase generation
+  version: 2.0.0
+  owner: opencode
+  updated_at: 2026-03-24
 ---
 
-# Kotlin Client UseCase Generator (Android / KMP client)
-
-Generate use cases only for client-side Kotlin applications:
-- Android
-- Kotlin Multiplatform (client side)
-
-Never generate backend/server code.
-
----
+# Kotlin Client UseCase Generator
 
 ## 1) Purpose
-
-This skill generates:
-- UseCase interface
-- UseCaseImpl implementation
-- constructor dependencies (only required ones)
-- orchestration business logic
-- execute method
-- private helper methods (when needed)
-- KDoc (in Russian)
-
----
-
-## 2) Scope
-
-### Generated entities
-- UseCase interface
-- UseCaseImpl implementation
-- execute method
-- private helper methods
-- KDoc documentation
-
-### Never generated
-- repository
-- datasource
-- mapper
-- DI configuration
-- module wiring
-- Flow-based use case
-- architectural placement
-- extra abstraction layers
-
----
-
-## 3) Naming Rules
-
-### UseCase naming
-Use:
-- FeatureActionUseCase
-- FeatureActionUseCaseImpl
-
-Examples:
-- AuthOtpVerifyUseCase
-- AuthOtpVerifyUseCaseImpl
-- UserProfileLoadUseCase
-- UserProfileLoadUseCaseImpl
-
-### Dependency naming
-- lowerCamelCase
-- variable name based on dependency type
-
-Examples:
-- dispatcherProvider
-- authRepository
-- authTokenSaver
-- profileRepository
-- sessionManager
-- analyticsTracker
-
-Forbidden generic names:
-- repository
-- manager
-- data
-- repo
-- helper
-- util
-
-Example:
-- type AuthRepository -> variable authRepository
-
----
-
-## 4) Contract Rules
-
-### Interface contract
-- Exactly one public method.
-- Method name must be execute.
-- Signature must be suspend fun execute(...).
-- Additional public API is forbidden.
-
-### execute method
-- Always suspend.
-- Return type can be any task-defined contract type (Unit, model, primitive, nullable, sealed result, etc.).
-- operator fun invoke is forbidden.
-- Only execute is allowed.
-
----
-
-## 5) Implementation Rules
-
-### Visibility
-- interface: public
-- implementation: internal
-
-Example:
-```kotlin
-internal class AuthOtpVerifyUseCaseImpl(
-    private val dispatcherProvider: DispatcherProvider,
-    private val authRepository: AuthRepository,
-) : AuthOtpVerifyUseCase
-```
-
-### Public API
-Forbidden:
-- additional public methods
-- additional entry points
-- any public/internal API except execute
-
-Allowed:
-- private methods
-
----
-
-## 6) Dispatcher Policy (Hard Rule)
-
-Each use case must:
-- use DispatcherProvider
-- run main logic inside withContext(...)
-
-Dispatcher selection:
-- default: dispatcherProvider.IO
-- use dispatcherProvider.Default only for clearly CPU-bound work
-- dispatcherProvider.Main is forbidden
-
----
-
-## 7) Business Logic Rules
-
-Use case is an orchestration unit, not a proxy.
-
-Allowed:
-- use multiple repositories
-- use cross-feature dependencies
-- read/write data
-- apply post-processing
-- save local data
-- aggregate data sources
-- branch logic (if, when, early return)
-- validate input
-- implement multi-step scenarios
-
-Allowed side effects:
-- token saving
-- cache updates
-- local writes
-- remote + local orchestration
-
----
-
-## 8) Error Handling Policy
-
-By default, forbidden:
-- adding try/catch without explicit need
-- changing error contract
-- introducing Result wrappers on your own
-
-Allowed:
-- try/catch only when explicitly required by task/contract
-
----
-
-## 9) Private Methods Policy
-
-Private methods:
-- are allowed when they add semantic value
-- can be suspend
-- can contain business logic
-- can use named arguments
-
-Do not create private methods:
-- for structure only
-- for aesthetics only
-- without logical need
-
----
-
-## 10) Logic Composition Rules
-
-### also usage
-Allowed only for simple single-step post-processing:
-
-```kotlin
-repository.verify(
-    code = code,
-).also { saveTokens(result = it) }
-```
-
-### Local variable usage
-Required when logic is more than one step:
-
-```kotlin
-val result = repository.verify(
-    code = code,
-)
-
-saveTokens(
-    result = result,
-)
-
-return result
-```
-
----
-
-## 11) KDoc Policy
-
-KDoc must be written in Russian.
-
-Required:
-- short KDoc for interface
-- short KDoc for execute in interface
-- detailed KDoc for implementation and execute in implementation
-
-Implementation KDoc must explain:
-- what the use case does
-- how logic works
-- why this dispatcher is used
-- what private methods do (if present)
-
----
-
-## 12) Formatting Specification (Hard Rules)
-
-### Parameter declaration
-- if method has 1 parameter: single-line is allowed
-- if method has 2+ parameters: multiline only
-
-Example:
-```kotlin
-suspend fun execute(
-    code: String,
-    sessionId: String,
-): Result
-```
-
-### Named arguments
-Always use named arguments in calls:
-- even for one argument
-
-```kotlin
-repository.loadUser(
-    userId = userId,
-)
-```
-
-### Trailing comma
-Mandatory in all multiline structures:
-- parameters
-- arguments
-- constructors
-
-### Constructor formatting
-If dependencies count is 2+, use vertical list only:
-
-```kotlin
-internal class ExampleUseCaseImpl(
-    private val dispatcherProvider: DispatcherProvider,
-    private val repository: ExampleRepository,
-) : ExampleUseCase
-```
-
----
-
-## 13) Abstraction Restrictions
-
-Forbidden:
-- unnecessary abstraction layers
-- wrappers without purpose
-- factories without reason
-- executors without reason
-- helper classes without a concrete task
-
----
-
-## 14) Architectural Neutrality
-
-This skill:
-- does not define architecture
-- does not define package structure
-- does not define layers
-- does not place files in project structure
-
----
-
-## 15) Explicit Restrictions (Never)
-
-Never:
-- use operator invoke
-- make Impl public
-- add extra public API
-- add Flow
-- add try/catch without explicit reason
-- change return contract
-- create extra entities
-- enforce package/layer placement
-
----
-
-## 16) Canonical Template
+- Goal: Generate deterministic client-side Kotlin use case code (`interface` + `internal Impl`) for Android/KMP with strict execution, dispatcher, and formatting constraints.
+- Non-goals: Do not generate repository/datasource/mapper/DI/module wiring, architecture placement, Flow-based contracts, or extra abstraction layers.
+
+## 2) Trigger Contract (MUST)
+- Primary triggers: User asks to create or refactor a Kotlin use case for Android or Kotlin Multiplatform client code.
+- Secondary/indirect triggers: User requests `execute`-style orchestration logic, `DispatcherProvider` usage, or use case templates with Russian KDoc.
+- Must-not-trigger cases: Backend/server handlers, repository implementation requests, DI module generation, API client generation, architecture/package planning.
+
+## 3) Inputs Required
+- Required inputs: Use case intent (feature/action), input parameters, and expected return contract (`Unit`, model, nullable, primitive, sealed result, etc.).
+- Optional inputs: Dependency names/types, CPU-bound vs IO-bound clarification, explicit error-handling requirement, and preferred naming.
+- Missing-input fallback: Infer `FeatureActionUseCase` naming, default dispatcher to `dispatcherProvider.IO`, preserve provided return contract, and avoid adding try/catch unless explicitly required.
+
+## 4) Output Contract (MUST)
+- Required deliverables: Kotlin `interface` with exactly one public `suspend fun execute(...)`, plus `internal` implementation with constructor dependencies, orchestration logic, and optional private helpers.
+- Output format: Kotlin code with Russian KDoc (short on interface, detailed on implementation), named arguments in calls, trailing commas in multiline blocks, and no extra generated entities.
+- Acceptance criteria: No `operator invoke`; no Flow return type; `DispatcherProvider + withContext(...)` always present; `dispatcherProvider.Main` forbidden; implementation exposes no additional public/internal API beyond `execute`.
+
+## 5) Workflow (Step-by-step)
+1. Parse requested use case intent and return contract.
+2. Build `FeatureActionUseCase` interface with one public `suspend fun execute(...)`.
+3. Build `internal FeatureActionUseCaseImpl` with only required dependencies and strict lowerCamelCase names.
+4. Wrap main business logic in `withContext(...)` using dispatcher policy.
+5. Implement orchestration logic (branching, aggregation, read/write, side effects) without adding forbidden abstractions.
+6. Add private helper methods only when they add semantic value.
+7. Add Russian KDoc per policy.
+8. Validate naming, contract, formatting, and restriction checklist before final output.
+
+## 6) Decision Rules
+- If parameter count is 1 -> single-line signature allowed.
+- If parameter count is 2+ -> multiline signature required.
+- If dependency count is 2+ -> multiline constructor list required.
+- If logic is single-step post-processing -> `also` is allowed.
+- If logic has multiple steps -> use local variables and explicit return.
+- If workload is clearly CPU-bound -> use `dispatcherProvider.Default`; otherwise use `dispatcherProvider.IO`.
+- If try/catch is not explicitly requested by contract/task -> do not add try/catch.
+- Default path: keep orchestration in `execute`, extract only meaningful private helpers, preserve return contract exactly.
+
+## 7) Resource Usage
+- Use `references/README.md` as the index for extended examples.
+- Use `references/examples.md` for canonical, unit-return, multi-branch, bad, and fixed examples.
+- Use `assets/...` only if repeated response artifacts are needed.
+- Use `scripts/...` only for deterministic repeated transforms; avoid scripts for one-off generation.
+
+## 8) Error Handling and Fallbacks
+- Common failure: Generated code adds `invoke`, public impl, `Flow`, wrong dispatcher, or unnecessary try/catch.
+- Recovery action: Rewrite to strict `execute` contract, force `internal Impl`, enforce dispatcher policy, and remove forbidden constructs.
+- Hard-stop conditions: Do not output code that changes return contract, adds extra entities, uses `dispatcherProvider.Main`, or violates public API constraints.
+
+## 9) Safety Boundaries (MUST/NEVER)
+- MUST: Generate client-side Android/KMP use case code only; keep architecture-neutral file placement.
+- MUST: Use `DispatcherProvider` with `withContext(...)` for main logic.
+- NEVER: Generate repositories/datasources/mappers/DI or enforce package/layer placement.
+- NEVER: Add `operator invoke`, `Flow`, extra public API, public impl class, or default try/catch without explicit requirement.
+
+## 10) Validation Checklist (BLOCKING)
+- [ ] Frontmatter complete and valid
+- [ ] Trigger contract includes should-trigger and should-not-trigger examples
+- [ ] Output contract is testable and unambiguous
+- [ ] Workflow is executable with available tools
+- [ ] Safety boundaries are explicit
+- [ ] Use case name matches `FeatureActionUseCase`
+- [ ] Implementation name matches `FeatureActionUseCaseImpl`
+- [ ] Interface is public and implementation is `internal`
+- [ ] Exactly one public method exists and it is `suspend fun execute(...)`
+- [ ] `DispatcherProvider + withContext(...)` is used
+- [ ] Dispatcher selection is valid (`IO` default, `Default` for CPU-only, never `Main`)
+- [ ] No `operator invoke`
+- [ ] No `Flow` in contract
+- [ ] No try/catch unless explicitly required
+- [ ] Named arguments are used for all calls
+- [ ] Multiline formatting and trailing commas are correct
+- [ ] KDoc is in Russian (short in interface, detailed in impl)
+- [ ] `SKILL.md` includes concise practical examples and links to extended examples
+
+## 11) Test Prompts
+- Should trigger:
+  - Create `AuthOtpVerifyUseCase` for Android client with execute contract and token save side effect.
+  - Generate a KMP client use case interface + internal impl with DispatcherProvider and Russian KDoc.
+  - Refactor this Kotlin use case to remove `invoke` and keep only `suspend execute`.
+- Should not trigger:
+  - Generate backend application service and controller for OTP verification.
+  - Build repository + datasource + DI module for this feature.
+  - Design package architecture and module boundaries for the app.
+- Edge cases:
+  - Request includes CPU-heavy hashing only -> use `dispatcherProvider.Default` and explain why.
+  - Request asks for try/catch but contract is silent -> do not add try/catch; keep original error contract.
+
+Inline examples (concise):
+
+Canonical snippet:
 
 ```kotlin
 /**
@@ -386,186 +174,19 @@ internal class AuthOtpVerifyUseCaseImpl(
 }
 ```
 
----
+Bad snippet (do not generate):
 
-## 17) Additional Templates
-
-### 17.1 Unit-return use case
-
-```kotlin
-/**
- * Обновляет профиль пользователя.
- */
-interface UserProfileRefreshUseCase {
-
-    /**
-     * Выполняет обновление профиля пользователя.
-     */
-    suspend fun execute(
-        userId: String,
-    ): Unit
-}
-
-/**
- * Реализация обновления профиля пользователя.
- *
- * Сценарий оркестрирует удаленную загрузку и локальное сохранение.
- * Использует IO dispatcher, так как выполняются операции чтения/записи данных.
- */
-internal class UserProfileRefreshUseCaseImpl(
-    private val dispatcherProvider: DispatcherProvider,
-    private val profileRepository: ProfileRepository,
-    private val profileCache: ProfileCache,
-) : UserProfileRefreshUseCase {
-
-    /**
-     * Загружает профиль пользователя и сохраняет его в кэш.
-     */
-    override suspend fun execute(
-        userId: String,
-    ): Unit {
-        return withContext(dispatcherProvider.IO) {
-            val profile = profileRepository.loadProfile(
-                userId = userId,
-            )
-
-            profileCache.save(
-                profile = profile,
-            )
-
-            Unit
-        }
-    }
-}
-```
-
-### 17.2 Multi-branch orchestration template
-
-```kotlin
-/**
- * Загружает профиль пользователя с учетом политики обновления.
- */
-interface UserProfileLoadUseCase {
-
-    /**
-     * Выполняет загрузку профиля пользователя.
-     */
-    suspend fun execute(
-        userId: String,
-        forceRefresh: Boolean,
-    ): UserProfile
-}
-
-/**
- * Реализация загрузки профиля пользователя.
- *
- * Если forceRefresh = true, use case запрашивает удаленные данные,
- * сохраняет их локально и возвращает актуальный профиль.
- * Если forceRefresh = false, use case использует локальный источник.
- *
- * Основная логика выполняется в IO dispatcher, так как сценарий
- * сочетает сетевые и локальные операции.
- */
-internal class UserProfileLoadUseCaseImpl(
-    private val dispatcherProvider: DispatcherProvider,
-    private val profileRepository: ProfileRepository,
-    private val profileCache: ProfileCache,
-    private val analyticsTracker: AnalyticsTracker,
-) : UserProfileLoadUseCase {
-
-    /**
-     * Выполняет ветвление сценария загрузки профиля
-     * по признаку принудительного обновления.
-     */
-    override suspend fun execute(
-        userId: String,
-        forceRefresh: Boolean,
-    ): UserProfile {
-        return withContext(dispatcherProvider.IO) {
-            if (forceRefresh) {
-                val remoteProfile = profileRepository.fetchRemoteProfile(
-                    userId = userId,
-                )
-
-                profileCache.save(
-                    profile = remoteProfile,
-                )
-
-                analyticsTracker.trackProfileRefresh(
-                    userId = userId,
-                )
-
-                return@withContext remoteProfile
-            }
-
-            val cachedProfile = profileCache.get(
-                userId = userId,
-            )
-
-            return@withContext cachedProfile
-        }
-    }
-}
-```
-
----
-
-## 18) Bad Examples (Do Not Generate)
-
-Wrong:
 ```kotlin
 interface XUseCase {
     suspend operator fun invoke(id: String): User
 }
 ```
 
-Wrong:
-```kotlin
-class XUseCaseImpl(...) : XUseCase // Impl must be internal
-```
+Extended example library: `skills/kotlin-client-usecase-generator/references/examples.md`
+Reference index: `skills/kotlin-client-usecase-generator/references/README.md`
 
-Wrong:
-```kotlin
-override suspend fun execute(id: String): Flow<User> // Flow is forbidden
-```
-
-Wrong:
-```kotlin
-override suspend fun execute(id: String): User {
-    return try {
-        ...
-    } catch (e: Exception) {
-        ...
-    }
-}
-```
-(if try/catch was not explicitly required by contract)
-
-Wrong:
-```kotlin
-override suspend fun execute(id: String): User {
-    return withContext(dispatcherProvider.Main) { ... }
-}
-```
-
----
-
-## 19) Validation Checklist
-
-Before returning output, verify:
-- code is client-side Android/KMP only
-- use case name matches FeatureActionUseCase
-- impl name matches FeatureActionUseCaseImpl
-- interface is public, impl is internal
-- exactly one public method execute
-- execute is always suspend
-- no operator invoke
-- DispatcherProvider + withContext is used
-- dispatcher is correct (IO default / Default CPU-only / no Main)
-- no Flow
-- no extra entities (repo/mapper/datasource/DI)
-- no try/catch without explicit reason
-- named arguments are always used
-- multiline rules and trailing comma are respected
-- KDoc is in Russian (short in interface, detailed in implementation)
-- architectural neutrality is preserved (no forced package/layer structure)
+## 12) Iteration Log
+- v2.0.0:
+  - Observed issue: Legacy skill had strong constraints and rich examples, but structure was non-canonical, rules were duplicated, and trigger boundaries were implicit.
+  - Change made: Refactored to canonical 12-section template, made trigger/output contracts explicit, centralized decision/safety rules, and moved extended code examples into references while preserving inline samples.
+  - Expected impact: More consistent triggering, easier maintenance, and lower risk of rule drift without losing example coverage.
