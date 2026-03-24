@@ -1,132 +1,108 @@
 ---
 name: kotlin-client-repository-generator
-description: Generate compile-ready Kotlin repository interfaces and implementations for client applications (Android and Kotlin Multiplatform): create Repository/RepositoryImpl, repository methods, only-used dependencies (featureDao, httpClient), mapper calls toData()/toRequest()/toEntity(), required KDoc in Russian, imports/package, and deterministic templates for DAO-only, HTTP-only, DAO+HTTP, Flow, and 204-no-body scenarios. Trigger for prompts about generating or updating repository layer code for client-side Kotlin apps.
+description: Generate client-side Kotlin repository interface and implementation for Android/KMP when the user asks to create or refactor repository layer code. Enforce safe-model repository contracts, only-used dependencies (featureDao/httpClient), existing mapper calls, Russian KDoc, strict formatting, and deterministic templates for DAO-only, HTTP-only, DAO+HTTP, Flow, and HTTP 204-no-body scenarios.
 metadata:
   short-description: Kotlin client repository generator
+  version: 2.0.0
+  owner: opencode
+  updated_at: 2026-03-24
 ---
 
-# Kotlin Client Repository Generator (Android / KMP)
+# Kotlin Client Repository Generator
 
-Generates repository layer only for **client Kotlin applications**:
-- Android
-- Kotlin Multiplatform (client side)
+## 1) Purpose
+- Goal: Generate deterministic, compile-ready client Kotlin repository code (`package + imports + interface + implementation`) for Android/KMP.
+- Non-goals: Do not generate DTO/Entity/safe model classes, mapper functions, DI config, architecture placement, threading policy, paging/websocket/multipart logic, expect/actual, or any backend/server code.
 
-Never generate backend/server code.
+## 2) Trigger Contract (MUST)
+- Primary triggers: User asks to create, refactor, or regenerate Kotlin repository interface/impl for Android or KMP client app.
+- Secondary/indirect triggers: User asks for repository templates with DAO/HTTP data source wiring, mapper-based conversion (`toData()/toRequest()/toEntity()`), or Russian KDoc for repository methods.
+- Must-not-trigger cases: Requests for backend services/controllers, use-case generation, DI module wiring, model/mapper generation, or architecture/package planning only.
 
-## 1) Responsibility Scope
+## 3) Inputs Required
+- Required inputs: Feature/entity intent, repository method contracts (params + return type), and data-source behavior (DAO, HTTP, or explicit DAO+HTTP strategy).
+- Optional inputs: Exact class names, endpoint/path placeholders, mapper availability (list mapper vs element mapper), and explicit error contract (`Result<T>` vs throwing).
+- Missing-input fallback: Use `FeatureRepository`/`FeatureRepositoryImpl`, infer dependency names (`featureDao`, `httpClient`), keep safe models in interface, and avoid adding error handling/threading unless explicitly required.
 
-This skill is responsible only for:
-- Repository interface
-- Repository implementation
-- Data-source interaction
-- Mapping usage
-- KDoc generation
-- Imports generation
-- Full compile-ready Kotlin file (`package + imports + interface + implementation`)
+## 4) Output Contract (MUST)
+- Required deliverables: Public repository interface + implementation class with only required constructor dependencies, valid imports, Russian KDoc, and compile-ready Kotlin.
+- Output format: Block-body functions only (no expression bodies), multiline params when count >= 2, trailing commas in all multiline structures, explicit mapper calls only from allowed set.
+- Acceptance criteria: Interface contains only safe models; implementation uses only used dependencies; no `withContext`/`Dispatchers`/DI annotations; Flow and `Result<T>` only when explicitly required by input contract.
 
-## 2) Out Of Scope
+## 5) Workflow (Step-by-step)
+1. Parse repository contract: methods, params, return types, and data-source strategy.
+2. Build interface with safe-model-only method signatures and short Russian KDoc.
+3. Build implementation with only used dependencies (`featureDao`, `httpClient` as needed).
+4. Implement method bodies with existing mapper calls and required source interactions.
+5. Apply scenario-specific rules (DAO-only, HTTP-only, DAO+HTTP, Flow, HTTP 204/no-body).
+6. Add detailed Russian KDoc on implementation methods.
+7. Validate strict formatting and forbidden constructs.
+8. Return full compile-ready Kotlin output.
 
-Do not do:
-- architecture file placement
-- layer selection (data/domain/presentation)
-- DTO/Entity/safe model generation
-- mapper function generation
-- DI configuration
-- dispatcher/threading management
-- cache policy / retry / fallback
-- paging
-- websocket-specific logic
-- multipart upload
-- expect/actual
-- server-side implementations (Ktor Server, Spring, etc.)
+## 6) Decision Rules
+- If method uses only local persistence -> DAO-only template.
+- If method uses only network request -> HTTP-only template.
+- If both DAO and HTTP are required -> use DAO+HTTP flow only when explicitly requested by contract (for example, `isForce`).
+- If return body is absent (HTTP 204/no-content) -> do not call `.body<Unit>()`.
+- If contract requires `Flow<T>` -> use DAO observation + `map { ...toData() }`.
+- If list mapper exists (`List<Entity>.toData()`) -> prefer list mapper; otherwise map elements.
+- If error handling is not explicitly requested -> do not add `try/catch`, `runCatching`, or forced `Result` wrapping.
+- Default path: keep repository thin, deterministic, and mapping-driven.
 
-## 3) Naming Rules
+## 7) Resource Usage
+- Use `references/README.md` as index for extended guidance and examples.
+- Use `references/examples.md` for full compile-ready templates and scenario snippets.
+- Use `assets/...` only if future output formatting artifacts are introduced.
+- Use `scripts/...` only for deterministic repeated transforms; avoid for one-off code generation.
 
-### Repository naming
-- `FeatureRepository`
-- `FeatureRepositoryImpl`
+## 8) Error Handling and Fallbacks
+- Common failure: Interface leaks DTO/Entity/Request/Response or implementation includes unused dependencies.
+- Recovery action: Rewrite interface to safe models only and remove unused constructor dependencies.
+- Common failure: Generated code adds forbidden threading/error wrappers.
+- Recovery action: Remove `withContext`, `Dispatchers`, `try/catch`, `runCatching`, and implicit `Result` wrapping unless explicitly required.
+- Hard-stop conditions: Do not output code that is server-side, non-compile-ready, or violates formatting/contract constraints.
 
-Example:
-- `UserRepository`
-- `UserRepositoryImpl`
+## 9) Safety Boundaries (MUST/NEVER)
+- MUST: Generate repository layer only for client Android/KMP scenarios.
+- MUST: Keep nullability exactly as defined by input contract.
+- MUST: Use only existing mapper calls (`Response.toData()`, `Data.toRequest()`, `Data.toEntity()`, `Entity.toData()`).
+- NEVER: Generate DTO/Entity/Request/Response classes, mapper functions, DI wiring, or server/backend code.
+- NEVER: Add unused constructor dependencies or forbidden annotations (`@Inject`, `@Singleton`, `@Factory`).
+- NEVER: Use expression-body functions, region comments, `withContext`, or `Dispatchers`.
 
-### DAO dependency naming
-- format: `featureDao`
-- examples: `userDao`, `orderDao`, `messageDao`
+## 10) Validation Checklist (BLOCKING)
+- [ ] Frontmatter complete and valid
+- [ ] Trigger contract includes should-trigger and should-not-trigger examples
+- [ ] Output contract is testable and unambiguous
+- [ ] Workflow is executable with available tools
+- [ ] Safety boundaries are explicit
+- [ ] Interface contains only safe models (no DTO/Entity/Request/Response)
+- [ ] Implementation correctly implements interface contracts
+- [ ] Constructor includes only actually used dependencies
+- [ ] Allowed mapper calls only; no mapper generation
+- [ ] Russian KDoc present: short in interface, detailed in implementation
+- [ ] No expression bodies; multiline params (>=2) and trailing commas are correct
+- [ ] Imports/package are present; output is compile-ready
+- [ ] Scenario constraints respected (DAO-only / HTTP-only / DAO+HTTP / Flow / HTTP 204)
+- [ ] Code examples preserved and synchronized with rules
 
-### HTTP dependency naming
-- always: `httpClient`
+## 11) Test Prompts
+- Should trigger:
+  - Generate `UserRepository` and `UserRepositoryImpl` for Android client: read users from DAO and return safe model list.
+  - Refactor this KMP repository to use only `httpClient` and map `UserResponse` to `List<User>` with `toData()`.
+  - Create repository method with `isForce` that fetches from network and caches entities in DAO.
+- Should not trigger:
+  - Build Ktor server repository and service layer for users.
+  - Generate DTO classes and mappers for user API.
+  - Create DI module bindings for repository implementations.
+- Edge cases:
+  - API returns 204 for delete endpoint -> do not call `.body<Unit>()`, keep `Unit` contract.
+  - Contract asks `Flow<List<User>>` observe method -> generate Flow mapping path, not suspend list fetch.
 
-## 4) Dependency Injection Rule
+Inline examples (concise):
 
-Add only actually used dependencies.
+DAO-only:
 
-Allowed:
-```kotlin
-class UserRepositoryImpl(
-    private val userDao: UserDao,
-) : UserRepository
-```
-
-Forbidden:
-```kotlin
-class UserRepositoryImpl(
-    private val userDao: UserDao,
-    private val httpClient: HttpClient, // unused
-) : UserRepository
-```
-
-## 5) Model Contract Rule
-
-Repository works only with safe models.
-
-Forbidden in interface:
-- `DTO`
-- `Request`
-- `Response`
-- `Entity`
-
-Allowed in interface:
-- `User`
-- `Order`
-- `Message`
-- `Result` (only if explicitly required by input contract)
-
-## 6) Mapper Usage Rules
-
-Use only existing mapper calls:
-- `Response.toData()`
-- `Data.toRequest()`
-- `Data.toEntity()`
-- `Entity.toData()`
-
-Never generate:
-- DTO/Entity/Request/Response
-- mapper functions
-- safe models
-
-## 7) List Mapping Rules
-
-If list mapper exists:
-```kotlin
-List<Entity>.toData()
-```
-use it.
-
-If not, use:
-```kotlin
-.map { it.toEntity() }
-```
-or
-```kotlin
-.map { it.toData() }
-```
-
-Inline mapping is allowed, but intermediate variable is preferred.
-
-## 8) Supported Scenarios
-
-### DAO-only
 ```kotlin
 override suspend fun getUsers(): List<User> {
     return userDao
@@ -135,359 +111,19 @@ override suspend fun getUsers(): List<User> {
 }
 ```
 
-### HTTP-only
+HTTP-only:
+
 ```kotlin
 override suspend fun getUsers(): List<User> {
     return httpClient
-        .get("url")
+        .get("users")
         .body<UserResponse>()
         .toData()
 }
 ```
 
-### DAO + HTTP (only on explicit scenario)
-```kotlin
-override suspend fun getUsers(
-    isForce: Boolean,
-): List<User> {
-    if (isForce) {
-        val users = httpClient
-            .get("url")
-            .body<UserResponse>()
-            .toData()
+HTTP 204/no-body:
 
-        val entities = users.map {
-            it.toEntity()
-        }
-
-        userDao.saveUsers(entities)
-
-        return users
-    }
-
-    return userDao
-        .getUsers()
-        .toData()
-}
-```
-
-## 9) HTTP 204 / No Body Rule
-
-If response body is absent, do not call `.body<Unit>()`.
-
-Correct:
-```kotlin
-httpClient.post("url") {
-    setBody(body)
-}
-```
-
-## 10) Flow Rule
-
-Use `Flow` only when explicitly required by contract.
-
-```kotlin
-override fun observeUsers(): Flow<List<User>> {
-    return userDao
-        .observeUsers()
-        .map {
-            it.toData()
-        }
-}
-```
-
-Paging/WebSocket are not supported by this skill.
-
-## 11) Error Handling Rule
-
-By default, do not add error handling.
-
-Automatically forbidden:
-- `runCatching`
-- `try/catch`
-- forced `Result` wrapping
-
-Add only when explicitly requested.
-
-## 12) Threading Rule
-
-Forbidden:
-- `withContext(...)`
-- `Dispatchers`
-
-Threading belongs to use-case layer.
-
-## 13) Helper Functions Rule
-
-Private helper functions are allowed if they reduce duplication.
-
-```kotlin
-private suspend fun fetchUsers(): List<User> {
-    return httpClient
-        .get("url")
-        .body<UserResponse>()
-        .toData()
-}
-```
-
-## 14) KDoc Rule (Mandatory)
-
-### Interface KDoc is short
-```kotlin
-/**
- * Получает список пользователей.
- */
-suspend fun getUsers(): List<User>
-```
-
-### Implementation KDoc is detailed and in Russian
-Must describe:
-- what it does
-- how it works
-- data source
-- return value
-
-Example:
-```kotlin
-/**
- * Получает список пользователей.
- *
- * Выполняет запрос через httpClient.
- * Ответ преобразуется из UserResponse
- * в список User через mapper toData().
- *
- * @return список пользователей
- */
-```
-
-## 15) Formatting Rules (Hard)
-
-- Expression body is forbidden:
-  - do not use `fun x(): T = ...`
-  - use block body only `{ return ... }`
-- If parameters count is >= 2, always place each parameter on a new line.
-- Trailing comma is mandatory in all multiline structures:
-  - function params
-  - constructors
-  - calls
-- Constructor format:
-```kotlin
-class UserRepositoryImpl(
-    private val userDao: UserDao,
-    private val httpClient: HttpClient,
-) : UserRepository
-```
-
-## 16) Forbidden Constructs
-
-- DTO/Entity/Request/Response in interface
-- unused constructor dependencies
-- `withContext`, `Dispatchers`
-- DI annotations (`@Inject`, `@Singleton`, `@Factory`)
-- region comments
-
-## 17) Batch Operations
-
-Allowed:
-- `saveAll`
-- `deleteAll`
-- `upsertAll`
-- `replaceAll`
-
-## 18) Nullability Rule
-
-Keep nullability exactly as defined by input contract.
-Do not change nullability implicitly.
-
-## 19) Supported Return Types
-
-- `T`
-- `List<T>`
-- `Flow<T>`
-- `Unit`
-- `Result<T>` (only when explicitly required)
-
-## 20) Output Contract
-
-Always output compile-ready Kotlin including:
-- `package`
-- `imports`
-- `interface`
-- `implementation`
-
-## 21) Templates
-
-### 21.1 Interface template
-```kotlin
-package com.example.feature.data.repository
-
-import com.example.feature.domain.model.User
-
-interface UserRepository {
-
-    /**
-     * Получает список пользователей.
-     */
-    suspend fun getUsers(): List<User>
-
-    /**
-     * Обновляет пользователя.
-     */
-    suspend fun updateUser(
-        user: User,
-    ): Unit
-}
-```
-
-### 21.2 DAO-only template
-```kotlin
-package com.example.feature.data.repository
-
-import com.example.feature.data.local.UserDao
-import com.example.feature.data.mapper.toData
-import com.example.feature.domain.model.User
-
-class UserRepositoryImpl(
-    private val userDao: UserDao,
-) : UserRepository {
-
-    /**
-     * Получает список пользователей.
-     *
-     * Берет данные из локального источника userDao.
-     * Результат в виде List<UserEntity> преобразует в List<User>
-     * через существующий list-mapper toData().
-     *
-     * @return список пользователей
-     */
-    override suspend fun getUsers(): List<User> {
-        return userDao
-            .getUsers()
-            .toData()
-    }
-}
-```
-
-### 21.3 HTTP-only template
-```kotlin
-package com.example.feature.data.repository
-
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import com.example.feature.data.remote.model.UserResponse
-import com.example.feature.data.mapper.toData
-import com.example.feature.domain.model.User
-
-class UserRepositoryImpl(
-    private val httpClient: HttpClient,
-) : UserRepository {
-
-    /**
-     * Получает список пользователей.
-     *
-     * Выполняет HTTP-запрос через httpClient.
-     * Полученный UserResponse преобразует в List<User>
-     * через mapper toData().
-     *
-     * @return список пользователей
-     */
-    override suspend fun getUsers(): List<User> {
-        return httpClient
-            .get("users")
-            .body<UserResponse>()
-            .toData()
-    }
-}
-```
-
-### 21.4 DAO + HTTP template
-```kotlin
-package com.example.feature.data.repository
-
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import com.example.feature.data.local.UserDao
-import com.example.feature.data.mapper.toData
-import com.example.feature.data.mapper.toEntity
-import com.example.feature.data.remote.model.UserResponse
-import com.example.feature.domain.model.User
-
-class UserRepositoryImpl(
-    private val userDao: UserDao,
-    private val httpClient: HttpClient,
-) : UserRepository {
-
-    /**
-     * Получает список пользователей.
-     *
-     * Если isForce = true, запрашивает данные из сети через httpClient,
-     * преобразует ответ в safe-модель User и сохраняет результат в userDao.
-     * Если isForce = false, читает данные из userDao и преобразует их в User.
-     *
-     * @param isForce признак принудительного обновления из сети
-     * @return список пользователей
-     */
-    override suspend fun getUsers(
-        isForce: Boolean,
-    ): List<User> {
-        if (isForce) {
-            val users = httpClient
-                .get("users")
-                .body<UserResponse>()
-                .toData()
-
-            val entities = users.map {
-                it.toEntity()
-            }
-
-            userDao.saveAll(entities)
-
-            return users
-        }
-
-        return userDao
-            .getUsers()
-            .toData()
-    }
-}
-```
-
-### 21.5 Flow template
-```kotlin
-package com.example.feature.data.repository
-
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import com.example.feature.data.local.UserDao
-import com.example.feature.data.mapper.toData
-import com.example.feature.domain.model.User
-
-class UserRepositoryImpl(
-    private val userDao: UserDao,
-) : UserRepository {
-
-    /**
-     * Наблюдает за списком пользователей.
-     *
-     * Подписывается на поток данных из userDao.
-     * Каждый элемент потока преобразует в safe-модель User
-     * через mapper toData().
-     *
-     * @return поток списка пользователей
-     */
-    override fun observeUsers(): Flow<List<User>> {
-        return userDao
-            .observeUsers()
-            .map {
-                it.toData()
-            }
-    }
-}
-```
-
-### 21.6 HTTP 204 template
 ```kotlin
 override suspend fun deleteUser(
     userId: String,
@@ -502,19 +138,11 @@ override suspend fun deleteUser(
 }
 ```
 
-## 22) Validation Checklist
+Extended example library: `skills/kotlin-client-repository-generator/references/examples.md`
+Reference index: `skills/kotlin-client-repository-generator/references/README.md`
 
-Before returning output, verify:
-- interface contains only safe models
-- interface has no DTO/Entity/Request/Response
-- implementation implements interface
-- dependencies are only used ones
-- only existing mapper calls are used
-- every function has KDoc
-- implementation KDoc is detailed and in Russian
-- no expression bodies
-- params >= 2 are multiline
-- trailing comma is present
-- imports are present
-- output is compile-ready
-- generated code is only for client Android/KMP scenarios
+## 12) Iteration Log
+- v2.0.0:
+  - Observed issue: Previous version had comprehensive constraints and templates but mixed structure, duplicated rules, and less explicit trigger boundaries.
+  - Change made: Refactored to canonical 12-section template, clarified trigger/output/safety contracts, and moved full template set into references while keeping concise inline examples.
+  - Expected impact: More predictable triggering, easier maintenance, and lower rule drift without losing code-example coverage.
